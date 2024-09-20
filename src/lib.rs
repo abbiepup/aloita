@@ -1,9 +1,10 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Error, ItemFn};
+use syn::{parse_macro_input, Error, ItemFn, LitInt};
 
 #[proc_macro_attribute]
-pub fn startup(_attr: TokenStream, function: TokenStream) -> TokenStream {
+pub fn startup(attr: TokenStream, function: TokenStream) -> TokenStream {
+    let order = parse_order(attr);
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
 
@@ -16,17 +17,19 @@ pub fn startup(_attr: TokenStream, function: TokenStream) -> TokenStream {
         .into();
     }
 
-    gen_func(&function, "ctor", quote! { #ident(); })
+    gen_func(&function, "ctor", order, quote! { #ident(); })
 }
 
 #[proc_macro_attribute]
-pub fn shutdown(_attr: TokenStream, function: TokenStream) -> TokenStream {
+pub fn shutdown(attr: TokenStream, function: TokenStream) -> TokenStream {
+    let order = parse_order(attr);
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
 
     gen_func(
         &function,
         "dtor",
+        order,
         quote! {
             extern "C" {
                 fn atexit(function: unsafe extern "C" fn());
@@ -41,7 +44,7 @@ pub fn shutdown(_attr: TokenStream, function: TokenStream) -> TokenStream {
     )
 }
 
-fn gen_func(function: &ItemFn, subsection: &str, body: proc_macro2::TokenStream) -> TokenStream {
+fn gen_func(function: &ItemFn, subsection: &str, order: String, body: proc_macro2::TokenStream) -> TokenStream {
     quote! {
         #function
 
@@ -57,12 +60,12 @@ fn gen_func(function: &ItemFn, subsection: &str, body: proc_macro2::TokenStream)
                     target_os = "openbsd",
                     target_os = "dragonfly",
                 ), 
-                link_section = concat!(".init_array.", #subsection)
+                link_section = concat!(".init_array.", #subsection, #order)
             )]
             #[cfg_attr(target_vendor = "apple", link_section = "__DATA,__mod_init_func")]
-            #[cfg_attr(target_os = "windows", link_section = concat!(".CRT$XCU.", #subsection))]
+            #[cfg_attr(target_os = "windows", link_section = concat!(".CRT$XCU.", #subsection, #order))]
             static _DECL: unsafe extern "C" fn() = {
-                #[cfg_attr(any(target_os = "linux", target_os = "android"), link_section = concat!(".text.", #subsection))]
+                #[cfg_attr(any(target_os = "linux", target_os = "android"), link_section = concat!(".text.", #subsection, #order))]
                 unsafe extern "C" fn _decl() { 
                     #body
                 }
@@ -71,4 +74,17 @@ fn gen_func(function: &ItemFn, subsection: &str, body: proc_macro2::TokenStream)
         };
     }
     .into()
+}
+
+fn parse_order(attr: TokenStream) -> String {
+    if attr.is_empty() {
+        String::new()  // No order provided
+    } else {
+        // Parse usize argument if provided
+        let parsed = syn::parse::<LitInt>(attr);
+        match parsed {
+            Ok(lit) => format!(".{}", lit),
+            Err(_) => String::new(),
+        }
+    }
 }
