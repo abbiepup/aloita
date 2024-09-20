@@ -8,7 +8,7 @@ pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
         Item::Fn(item_fn) => {
             let ident = &item_fn.sig.ident;
             gen_func(&item_fn, attr, "ctor", quote! { #ident(); })
-        },
+        }
         Item::Static(_item_static) => unimplemented!(),
         _ => panic!(),
     }
@@ -19,11 +19,16 @@ pub fn shutdown(attr: TokenStream, function: TokenStream) -> TokenStream {
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
 
-    gen_func(&function, attr, "dtor", quote! {
-        extern "C" { fn atexit(function: unsafe extern "C" fn()); }
-        unsafe extern "C" fn _onexit() { #ident(); }
-        atexit(_onexit);
-    })
+    gen_func(
+        &function,
+        attr,
+        "dtor",
+        quote! {
+            extern "C" { fn atexit(function: unsafe extern "C" fn()); }
+            unsafe extern "C" fn _onexit() { #ident(); }
+            atexit(_onexit);
+        },
+    )
 }
 
 fn gen_func(
