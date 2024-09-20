@@ -1,41 +1,39 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, ItemFn, LitInt, parse};
+use syn::{parse, parse_macro_input, ItemFn, LitInt};
 
 #[proc_macro_attribute]
 pub fn startup(attr: TokenStream, function: TokenStream) -> TokenStream {
-    let order = parse_order(attr);
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
 
-    gen_func(&function, "ctor", order, quote! { #ident(); })
+    let body = quote! { #ident(); };
+
+    gen_func(&function, attr, "ctor", body)
 }
 
 #[proc_macro_attribute]
 pub fn shutdown(attr: TokenStream, function: TokenStream) -> TokenStream {
-    let order = parse_order(attr);
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
 
-    gen_func(
-        &function,
-        "dtor",
-        order,
-        quote! {
-            extern "C" {
-                fn atexit(function: unsafe extern "C" fn());
-            }
+    let body = quote! {
+        extern "C" { fn atexit(function: unsafe extern "C" fn()); }
+        unsafe extern "C" fn _onexit() { #ident(); }
+        atexit(_onexit);
+    };
 
-            unsafe extern "C" fn _onexit() {
-                #ident();
-            }
-
-            atexit(_onexit);
-        },
-    )
+    gen_func(&function, attr, "dtor", body)
 }
 
-fn gen_func(function: &ItemFn, subsection: &str, order: String, body: proc_macro2::TokenStream) -> TokenStream {
+fn gen_func(
+    function: &ItemFn,
+    attr: TokenStream,
+    subsection: &str,
+    body: proc_macro2::TokenStream,
+) -> TokenStream {
+    let order = parse::<LitInt>(attr).map_or_else(|_| String::new(), |lit| format!(".{}", lit));
+
     quote! {
         #function
 
@@ -62,8 +60,4 @@ fn gen_func(function: &ItemFn, subsection: &str, order: String, body: proc_macro
         };
     }
     .into()
-}
-
-fn parse_order(attr: TokenStream) -> String {
-    parse::<LitInt>(attr).map_or_else(|_| String::new(), |lit| format!(".{}", lit))
 }
