@@ -1,21 +1,12 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Error, ItemFn, LitInt};
+use syn::{parse_macro_input, ItemFn, LitInt, parse};
 
 #[proc_macro_attribute]
 pub fn startup(attr: TokenStream, function: TokenStream) -> TokenStream {
     let order = parse_order(attr);
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
-
-    if !function.sig.inputs.is_empty() {
-        return Error::new_spanned(
-            &function,
-            "Functions marked with #[startup] must have zero arguments.",
-        )
-        .to_compile_error()
-        .into();
-    }
 
     gen_func(&function, "ctor", order, quote! { #ident(); })
 }
@@ -66,10 +57,7 @@ fn gen_func(function: &ItemFn, subsection: &str, order: String, body: proc_macro
             #[cfg_attr(target_os = "windows", link_section = concat!(".CRT$XCU.", #subsection, #order))]
             static _DECL: unsafe extern "C" fn() = {
                 #[cfg_attr(any(target_os = "linux", target_os = "android"), link_section = concat!(".text.", #subsection, #order))]
-                unsafe extern "C" fn _decl() { 
-                    #body
-                }
-                _decl
+                unsafe extern "C" fn _decl() { #body } _decl
             };
         };
     }
@@ -77,14 +65,5 @@ fn gen_func(function: &ItemFn, subsection: &str, order: String, body: proc_macro
 }
 
 fn parse_order(attr: TokenStream) -> String {
-    if attr.is_empty() {
-        String::new()  // No order provided
-    } else {
-        // Parse usize argument if provided
-        let parsed = syn::parse::<LitInt>(attr);
-        match parsed {
-            Ok(lit) => format!(".{}", lit),
-            Err(_) => String::new(),
-        }
-    }
+    parse::<LitInt>(attr).map_or_else(|_| String::new(), |lit| format!(".{}", lit))
 }
