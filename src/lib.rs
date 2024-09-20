@@ -7,9 +7,7 @@ pub fn startup(attr: TokenStream, function: TokenStream) -> TokenStream {
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
 
-    let body = quote! { #ident(); };
-
-    gen_func(&function, attr, "ctor", body)
+    gen_func(&function, attr, "ctor", quote! { #ident(); })
 }
 
 #[proc_macro_attribute]
@@ -17,13 +15,11 @@ pub fn shutdown(attr: TokenStream, function: TokenStream) -> TokenStream {
     let function = parse_macro_input!(function as ItemFn);
     let ident = &function.sig.ident;
 
-    let body = quote! {
+    gen_func(&function, attr, "dtor", quote! {
         extern "C" { fn atexit(function: unsafe extern "C" fn()); }
         unsafe extern "C" fn _onexit() { #ident(); }
         atexit(_onexit);
-    };
-
-    gen_func(&function, attr, "dtor", body)
+    })
 }
 
 fn gen_func(
