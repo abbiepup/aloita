@@ -1,26 +1,26 @@
-use aloita::{shutdown, startup};
-use libc::printf;
+use aloita::startup;
+use std::sync::{LazyLock, Mutex};
 
-#[startup]
-fn before_main_unordered() {
-    unsafe { printf(c"Startup Unordered\n".as_ptr()) };
+static INIT: LazyLock<Mutex<Vec<u32>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+
+#[startup(10)]
+fn push_1() {
+    let mut init = INIT.lock().unwrap();
+    init.push(10);
 }
 
-#[startup(1)]
-fn before_main_ordered() {
-    unsafe { printf(c"Startup 1\n".as_ptr()) };
+#[startup(5)]
+fn push_5() {
+    let mut init = INIT.lock().unwrap();
+    init.push(5);
 }
 
 #[startup(0)]
-fn before_main() {
-    unsafe { printf(c"Startup 0\n".as_ptr()) };
-}
-
-#[shutdown]
-fn after_main() {
-    unsafe { printf(c"Shutdown\n".as_ptr()) };
+fn push_0() {
+    let mut init = INIT.lock().unwrap();
+    init.push(0);
 }
 
 fn main() {
-    println!("Main");
+    dbg!(&INIT);
 }
