@@ -31,13 +31,28 @@ pub fn shutdown(attr: TokenStream, function: TokenStream) -> TokenStream {
     )
 }
 
+const fn decimal_digit_length_of_usize() -> usize {
+    let mut count = 0;
+    let mut value = usize::MAX;
+
+    while value > 0 {
+        value /= 10;
+        count += 1;
+    }
+
+    count
+}
+
 fn gen_func(
     function: &ItemFn,
     attr: TokenStream,
     section: &str,
     body: proc_macro2::TokenStream,
 ) -> TokenStream {
-    let order = parse::<LitInt>(attr).map_or_else(|_| String::new(), |lit| format!(".{}", lit));
+    let order = parse::<LitInt>(attr).map_or_else(|_| String::new(), |lit| {
+        let num = lit.base10_parse::<usize>().unwrap();
+        format!(".{:0width$}", num, width = decimal_digit_length_of_usize())
+    });
 
     quote! {
         #function

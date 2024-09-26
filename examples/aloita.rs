@@ -1,12 +1,12 @@
 use aloita::startup;
-use std::sync::{LazyLock, Mutex};
+use std::sync::Mutex;
 
-static INIT: LazyLock<Mutex<Vec<u32>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+static INIT: Mutex<Vec<u32>> = Mutex::new(Vec::new());
 
 #[startup(10)]
 fn push_1() {
     let mut init = INIT.lock().unwrap();
-    init.push(10);
+    init.push(010);
 }
 
 #[startup(5)]
