@@ -1,16 +1,14 @@
+use core::fmt::Display;
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{parse, parse_macro_input, Item, ItemFn, LitInt};
+use quote::{quote, ToTokens};
+use syn::{parse, parse_macro_input, Error, Item, ItemFn, ItemStatic, LitInt};
 
 #[proc_macro_attribute]
 pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
     match parse_macro_input!(item as Item) {
-        Item::Fn(item_fn) => {
-            let ident = &item_fn.sig.ident;
-            gen_func(&item_fn, attr, "ctor", quote! { #ident(); })
-        }
-        Item::Static(_item_static) => unimplemented!(),
-        _ => panic!(),
+        Item::Fn(item_fn) => startup_function_impl(attr, item_fn),
+        Item::Static(_item_static) => unimplemented!("Init time evaluated static aren't implemented yet"),
+        item => compile_error(item, format!("The `#[startup]` attribute can only be applied to `fn`s or `statics`s")),
     }
 }
 
@@ -29,6 +27,19 @@ pub fn shutdown(attr: TokenStream, function: TokenStream) -> TokenStream {
             atexit(_onexit);
         },
     )
+}
+
+fn startup_function_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
+    let ident = &item_fn.sig.ident;
+    gen_func(&item_fn, attr, "ctor", quote! { #ident(); })
+}
+
+fn startup_static_impl(attr: TokenStream, item_static: ItemStatic) -> TokenStream {
+    todo!()
+}
+
+fn compile_error(tokens: impl ToTokens, message: impl Display) -> TokenStream {
+    Error::new_spanned(tokens, message).to_compile_error().into()
 }
 
 const fn decimal_digit_length_of_usize() -> usize {
