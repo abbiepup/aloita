@@ -1,29 +1,30 @@
 use core::fmt::Display;
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse, parse_macro_input, Error, Item, ItemFn, LitInt};
+use syn::parse::{Parse, ParseStream};
+use syn::{parse_macro_input, Error, Item, ItemFn, LitInt};
 
 #[proc_macro_attribute]
 pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
-    const ERROR: &str = "The `#[startup]` attribute can only be applied to `fn`s";
+    let message = "The `#[startup]` attribute can only be applied to `fn`s";
 
     match parse_macro_input!(item as Item) {
-        Item::Fn(item_fn) => startup_function_impl(attr, item_fn),
-        item => compile_error(item, ERROR),
+        Item::Fn(item_fn) => startup_impl(attr, item_fn),
+        item => compile_error(item, message),
     }
 }
 
 #[proc_macro_attribute]
 pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
-    const ERROR: &str = "The `#[shutdown]` attribute can only be applied to `fn`s";
+    let message = "The `#[shutdown]` attribute can only be applied to `fn`s";
 
     match parse_macro_input!(item as Item) {
         Item::Fn(item_fn) => shutdown_impl(attr, item_fn),
-        item => compile_error(item, ERROR),
+        item => compile_error(item, message),
     }
 }
 
-fn startup_function_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
+fn startup_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
     let ident = &item_fn.sig.ident;
     gen_func(&item_fn, attr, "constructor", quote! { #ident(); })
 }
@@ -67,7 +68,7 @@ fn gen_func(
     section: &str,
     body: proc_macro2::TokenStream,
 ) -> TokenStream {
-    let order = parse::<LitInt>(attr).map_or_else(
+    let order = syn::parse::<LitInt>(attr).map_or_else(
         |_| String::new(),
         |lit| {
             let num = lit.base10_parse::<usize>().unwrap();
@@ -80,15 +81,15 @@ fn gen_func(
 
         const _: () = {
             #[used]
-            #[cfg_attr(target_vendor = "dragonfly", link_section = concat!(".init_array.", #section, #order))]
-            #[cfg_attr(target_vendor = "openbsd", link_section = concat!(".init_array.", #section, #order))]
-            #[cfg_attr(target_vendor = "freebsd", link_section = concat!(".init_array.", #section, #order))]
-            #[cfg_attr(target_vendor = "netbsd", link_section = concat!(".init_array.", #section, #order))]
-            #[cfg_attr(target_vendor = "android", link_section = concat!(".init_array.", #section, #order))]
-            #[cfg_attr(target_vendor = "linux", link_section = concat!(".init_array.", #section, #order))]
-            #[cfg_attr(target_vendor = "none", link_section = concat!(".init_array.", #section, #order))]
-            #[cfg_attr(target_vendor = "apple", link_section = "__DATA,__mod_init_func")]
             #[cfg_attr(target_os = "windows", link_section = concat!(".CRT$XCU.", #section, #order))]
+            #[cfg_attr(target_os = "dragonfly", link_section = concat!(".init_array.", #section, #order))]
+            #[cfg_attr(target_os = "openbsd", link_section = concat!(".init_array.", #section, #order))]
+            #[cfg_attr(target_os = "freebsd", link_section = concat!(".init_array.", #section, #order))]
+            #[cfg_attr(target_os = "netbsd", link_section = concat!(".init_array.", #section, #order))]
+            #[cfg_attr(target_os = "android", link_section = concat!(".init_array.", #section, #order))]
+            #[cfg_attr(target_os = "linux", link_section = concat!(".init_array.", #section, #order))]
+            #[cfg_attr(target_os = "none", link_section = concat!(".init_array.", #section, #order))]
+            #[cfg_attr(target_vendor = "apple", link_section = "__DATA,__mod_init_func")]
             static _DECL: unsafe extern "C" fn() = {
                 #[cfg_attr(any(target_os = "linux", target_os = "android"), link_section = concat!(".text.", #section, #order))]
                 unsafe extern "C" fn _decl() { #body } _decl
