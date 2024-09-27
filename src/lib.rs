@@ -1,18 +1,15 @@
 use core::fmt::Display;
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse, parse_macro_input, Error, Item, ItemFn, ItemStatic, LitInt};
+use syn::{parse, parse_macro_input, Error, Item, ItemFn, LitInt};
 
 #[proc_macro_attribute]
 pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
     match parse_macro_input!(item as Item) {
         Item::Fn(item_fn) => startup_function_impl(attr, item_fn),
-        Item::Static(_item_static) => {
-            unimplemented!("Init time evaluated static's aren't implemented yet")
-        }
         item => compile_error(
             item,
-            "The `#[startup]` attribute can only be applied to `fn`s or `statics`s",
+            "The `#[startup]` attribute can only be applied to `fn`s",
         ),
     }
 }
@@ -30,11 +27,7 @@ pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 fn startup_function_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
     let ident = &item_fn.sig.ident;
-    gen_func(&item_fn, attr, "ctor", quote! { #ident(); })
-}
-
-fn startup_static_impl(attr: TokenStream, item_static: ItemStatic) -> TokenStream {
-    todo!()
+    gen_func(&item_fn, attr, "constructor", quote! { #ident(); })
 }
 
 fn shutdown_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
@@ -43,7 +36,7 @@ fn shutdown_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
     gen_func(
         &item_fn,
         attr,
-        "dtor",
+        "destructor",
         quote! {
             extern "C" { fn atexit(function: unsafe extern "C" fn()); }
             unsafe extern "C" fn _onexit() { #ident(); }
