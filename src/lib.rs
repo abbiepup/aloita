@@ -5,23 +5,21 @@ use syn::{parse, parse_macro_input, Error, Item, ItemFn, LitInt};
 
 #[proc_macro_attribute]
 pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
+    const ERROR: &str = "The `#[startup]` attribute can only be applied to `fn`s";
+
     match parse_macro_input!(item as Item) {
         Item::Fn(item_fn) => startup_function_impl(attr, item_fn),
-        item => compile_error(
-            item,
-            "The `#[startup]` attribute can only be applied to `fn`s",
-        ),
+        item => compile_error(item, ERROR),
     }
 }
 
 #[proc_macro_attribute]
 pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
+    const ERROR: &str = "The `#[shutdown]` attribute can only be applied to `fn`s";
+
     match parse_macro_input!(item as Item) {
         Item::Fn(item_fn) => shutdown_impl(attr, item_fn),
-        item => compile_error(
-            item,
-            "The `#[shutdown]` attribute can only be applied to `fn`s",
-        ),
+        item => compile_error(item, ERROR),
     }
 }
 
