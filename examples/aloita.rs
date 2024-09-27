@@ -1,4 +1,4 @@
-use aloita::{shutdown, startup};
+use aloita::startup;
 use std::sync::Mutex;
 
 static INIT: Mutex<Vec<u32>> = Mutex::new(Vec::new());

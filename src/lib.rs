@@ -1,7 +1,6 @@
 use core::fmt::Display;
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::parse::{Parse, ParseStream};
 use syn::{parse_macro_input, Error, Item, ItemFn, LitInt};
 
 #[proc_macro_attribute]
