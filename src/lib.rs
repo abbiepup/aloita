@@ -7,26 +7,17 @@ use syn::{parse, parse_macro_input, Error, Item, ItemFn, ItemStatic, LitInt};
 pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
     match parse_macro_input!(item as Item) {
         Item::Fn(item_fn) => startup_function_impl(attr, item_fn),
-        Item::Static(_item_static) => unimplemented!("Init time evaluated static aren't implemented yet"),
-        item => compile_error(item, format!("The `#[startup]` attribute can only be applied to `fn`s or `statics`s")),
+        Item::Static(_item_static) => unimplemented!("Init time evaluated static's aren't implemented yet"),
+        item => compile_error(item, "The `#[startup]` attribute can only be applied to `fn`s or `statics`s"),
     }
 }
 
 #[proc_macro_attribute]
-pub fn shutdown(attr: TokenStream, function: TokenStream) -> TokenStream {
-    let function = parse_macro_input!(function as ItemFn);
-    let ident = &function.sig.ident;
-
-    gen_func(
-        &function,
-        attr,
-        "dtor",
-        quote! {
-            extern "C" { fn atexit(function: unsafe extern "C" fn()); }
-            unsafe extern "C" fn _onexit() { #ident(); }
-            atexit(_onexit);
-        },
-    )
+pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match parse_macro_input!(item as Item) {
+        Item::Fn(item_fn) => shutdown_impl(attr, item_fn),
+        item => compile_error(item, "The `#[shutdown]` attribute can only be applied to `fn`s"),
+    }
 }
 
 fn startup_function_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
@@ -36,6 +27,21 @@ fn startup_function_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
 
 fn startup_static_impl(attr: TokenStream, item_static: ItemStatic) -> TokenStream {
     todo!()
+}
+
+fn shutdown_impl(attr: TokenStream, item_fn: ItemFn) -> TokenStream {
+    let ident = &item_fn.sig.ident;
+
+    gen_func(
+        &item_fn,
+        attr,
+        "dtor",
+        quote! {
+            extern "C" { fn atexit(function: unsafe extern "C" fn()); }
+            unsafe extern "C" fn _onexit() { #ident(); }
+            atexit(_onexit);
+        },
+    )
 }
 
 fn compile_error(tokens: impl ToTokens, message: impl Display) -> TokenStream {
