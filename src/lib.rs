@@ -89,9 +89,9 @@ fn gen_func(
             #[cfg_attr(target_os = "linux", link_section = concat!(".init_array.", #section, #order))]
             #[cfg_attr(target_os = "none", link_section = concat!(".init_array.", #section, #order))]
             #[cfg_attr(target_vendor = "apple", link_section = "__DATA,__mod_init_func")]
-            static _DECL: unsafe extern "C" fn() = {
+            static DECL: unsafe extern "C" fn() = {
                 #[cfg_attr(any(target_os = "linux", target_os = "android"), link_section = concat!(".text.", #section, #order))]
-                unsafe extern "C" fn _decl() { #body } _decl
+                unsafe extern "C" fn decl() { #body } decl
             };
         };
     }
