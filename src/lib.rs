@@ -54,11 +54,9 @@ fn gen_func(
     body: proc_macro2::TokenStream,
     section: &str,
 ) -> TokenStream {
-    let order =
-        parse::<LitInt>(attr).map_or_else(|_| 0, |lit| lit.base10_parse::<usize>().unwrap());
     let order = format!(
         ".{:0width$}",
-        order,
+        parse::<LitInt>(attr).map_or_else(|_| 0, |lit| lit.base10_parse::<usize>().unwrap()),
         width = usize::MAX.ilog10() as usize + 1
     );
 
