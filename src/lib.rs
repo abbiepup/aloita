@@ -1,15 +1,30 @@
-use core::fmt::Display;
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{parse, parse_macro_input, Error, Item, ItemFn, LitInt};
+
+macro_rules! compiler_error {
+    ($tokens:expr, $($arg:tt)*) => {
+        Error::new_spanned($tokens, format!($($arg)*))
+            .to_compile_error()
+            .into()
+    };
+}
 
 #[proc_macro_attribute]
 pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
     let message = "The `#[startup]` attribute can only be applied to `fn`s";
 
     match parse_macro_input!(item as Item) {
-        Item::Fn(item_fn) => startup_impl(attr, item_fn, "constructor"),
-        item => compile_error(item, message),
+        Item::Fn(item_fn) => {
+            let ident = &item_fn.sig.ident;
+
+            let body = quote! {
+                #ident();
+            };
+
+            gen_func(attr, &item_fn, body, "constructor")
+        }
+        item => compiler_error!(item, "{}", message),
     }
 }
 
@@ -18,42 +33,24 @@ pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
     let message = "The `#[shutdown]` attribute can only be applied to `fn`s";
 
     match parse_macro_input!(item as Item) {
-        Item::Fn(item_fn) => shutdown_impl(attr, item_fn, "destructor"),
-        item => compile_error(item, message),
+        Item::Fn(item_fn) => {
+            let ident = &item_fn.sig.ident;
+
+            let body = quote! {
+                extern "C" { fn atexit(function: unsafe extern "C" fn()); }
+                unsafe extern "C" fn onexit() { #ident(); }
+                atexit(onexit);
+            };
+
+            gen_func(attr, &item_fn, body, "destructor")
+        }
+        item => compiler_error!(item, "{}", message),
     }
 }
 
-fn startup_impl(attr: TokenStream, item_fn: ItemFn, section: &str) -> TokenStream {
-    let ident = &item_fn.sig.ident;
-
-    let body = quote! {
-        #ident();
-    };
-
-    gen_func(&item_fn, attr, body, section)
-}
-
-fn shutdown_impl(attr: TokenStream, item_fn: ItemFn, section: &str) -> TokenStream {
-    let ident = &item_fn.sig.ident;
-
-    let body = quote! {
-        extern "C" { fn atexit(function: unsafe extern "C" fn()); }
-        unsafe extern "C" fn onexit() { #ident(); }
-        atexit(onexit);
-    };
-
-    gen_func(&item_fn, attr, body, section)
-}
-
-fn compile_error(tokens: impl ToTokens, message: impl Display) -> TokenStream {
-    Error::new_spanned(tokens, message)
-        .to_compile_error()
-        .into()
-}
-
 fn gen_func(
-    function: &ItemFn,
     attr: TokenStream,
+    function: &ItemFn,
     body: proc_macro2::TokenStream,
     section: &str,
 ) -> TokenStream {
