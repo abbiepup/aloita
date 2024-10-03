@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse, parse_macro_input, Error, Item, ItemFn, LitInt};
 
-macro_rules! compiler_error {
+macro_rules! compile_error {
     ($tokens:expr, $($arg:tt)*) => {
         Error::new_spanned($tokens, format!($($arg)*))
             .to_compile_error()
@@ -24,7 +24,7 @@ pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             gen_func(attr, &item_fn, body, "constructor")
         }
-        item => compiler_error!(item, "{}", message),
+        item => compile_error!(item, "{}", message),
     }
 }
 
@@ -44,7 +44,7 @@ pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
 
             gen_func(attr, &item_fn, body, "destructor")
         }
-        item => compiler_error!(item, "{}", message),
+        item => compile_error!(item, "{}", message),
     }
 }
 
