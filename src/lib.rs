@@ -22,7 +22,7 @@ pub fn startup(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #ident();
             };
 
-            gen_func(attr, &item_fn, body, "constructor")
+            gen_func(attr, item_fn, body, "constructor")
         }
         item => compile_error!(item, "{}", message),
     }
@@ -42,7 +42,7 @@ pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
                 atexit(onexit);
             };
 
-            gen_func(attr, &item_fn, body, "destructor")
+            gen_func(attr, item_fn, body, "destructor")
         }
         item => compile_error!(item, "{}", message),
     }
@@ -50,7 +50,7 @@ pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 fn gen_func(
     attr: TokenStream,
-    function: &ItemFn,
+    function: ItemFn,
     body: proc_macro2::TokenStream,
     section: &str,
 ) -> TokenStream {
