@@ -37,7 +37,7 @@ pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
             let ident = &item_fn.sig.ident;
 
             let body = quote! {
-                extern "C" { fn atexit(function: unsafe extern "C" fn()); }
+                extern "C" { fn atexit(callback: unsafe extern "C" fn()); }
                 unsafe extern "C" fn onexit() { #ident(); }
                 atexit(onexit);
             };
