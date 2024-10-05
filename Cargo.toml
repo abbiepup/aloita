@@ -12,4 +12,4 @@ quote = "1.0.37"
 syn = { version = "2.0.77", features = ["full"] }
 
 [dev-dependencies]
-libc = "0.2.158"
+libc = "0.2.159"
