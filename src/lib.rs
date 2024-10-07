@@ -37,9 +37,23 @@ pub fn shutdown(attr: TokenStream, item: TokenStream) -> TokenStream {
             let ident = &item_fn.sig.ident;
 
             let body = quote! {
-                extern "C" { fn atexit(callback: unsafe extern "C" fn()); }
                 unsafe extern "C" fn onexit() { #ident(); }
-                atexit(onexit);
+
+                #[cfg(not(target_vendor = "apple"))]
+                {
+                    extern "C" { fn atexit(callback: unsafe extern "C" fn()); }
+                    atexit(onexit);
+                }
+
+                #[cfg(target_vendor = "apple")]
+                {
+                    extern "C" {
+                        static __dso_handle: *const u8;
+                        fn __cxa_atexit(callback: unsafe extern "C" fn(_: *const u8), arg: *const u8, dso_handle: *const u8);
+                    }
+
+                    __cxa_atexit(onexit, ::core::ptr::null(), __dso_handle);
+                }
             };
 
             gen_func(attr, item_fn, body, "destructor")

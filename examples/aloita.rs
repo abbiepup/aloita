@@ -1,4 +1,4 @@
-use aloita::startup;
+use aloita::{shutdown, startup};
 use std::sync::Mutex;
 
 static INIT: Mutex<Vec<u32>> = Mutex::new(Vec::new());
@@ -26,6 +26,9 @@ fn push_0() {
     let mut init = INIT.lock().unwrap();
     init.push(0);
 }
+
+#[shutdown]
+fn shut() {}
 
 fn main() {
     dbg!(&INIT);
