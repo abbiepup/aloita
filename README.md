@@ -3,7 +3,8 @@
 > Aloita is currently under development, and official releases have not been shipped yet.
 
 ## Contributing
-See [`CONTRIBUTING.md`][CONTRIBUTING] for contributing to the project.
+> [!NOTE]\
+> All contributions to this project must comply with the Rust standard licensing model `MIT OR Apache 2.0` and will be dual-licensed accordingly, without additional terms or conditions.
 
 ## License
 Aloita is dual licensed and distributed under the terms of Apache 2.0 and MIT.
